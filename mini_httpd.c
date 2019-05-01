@@ -551,6 +551,7 @@ main( int argc, char** argv )
 	SSL_load_error_strings();
 	SSLeay_add_ssl_algorithms();
 	ssl_ctx = SSL_CTX_new( SSLv23_server_method() );
+	SSL_CTX_set_options( ssl_ctx, SSL_OP_NO_SSLv3 );
 	if ( certfile[0] != '\0' )
 	    if ( SSL_CTX_use_certificate_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
 		 SSL_CTX_use_PrivateKey_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
