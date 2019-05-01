@@ -37,6 +37,7 @@
 # define HAVE_SENDFILE
 # define HAVE_SCANDIR
 # define HAVE_INT64T
+# define HAVE_SRANDOMDEV
 # ifdef SO_ACCEPTFILTER
 #  define HAVE_ACCEPT_FILTERS
 #  if ( __FreeBSD_version >= 411000 )
@@ -86,6 +87,7 @@
 # define HAVE_MEMORY_H
 # define HAVE_SIGSET
 # define HAVE_INT64T
+# define HAVE_RAND
 #endif /* OS_Solaris */
 
 #ifdef OS_DigitalUnix
@@ -103,4 +105,10 @@
 # define HAVE_WAITPID
 # define HAVE_MEMORY_H
 # define HAVE_SIGSET
+# define HAVE_RAND
 #endif /* OS_Solaris */
+
+#ifdef HAVE_RAND
+# define srandom srand
+# define random rand
+#endif /* HAVE_RAND */

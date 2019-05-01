@@ -16,33 +16,31 @@ CRYPT_LIB =    -lcrypt
 # it may be in /usr/local instead of /usr/local/ssl.
 #SSL_TREE =	/usr/local/ssl
 #SSL_DEFS =	-DUSE_SSL
-#SSL_INC =	-I${SSL_TREE}/include
-#SSL_LIBS =	-L${SSL_TREE}/lib -lssl -lcrypto
+#SSL_INC =	-I$(SSL_TREE)/include
+#SSL_LIBS =	-L$(SSL_TREE)/lib -lssl -lcrypto
 
 
 BINDIR =	/usr/local/sbin
 MANDIR =	/usr/local/man
-CC =		gcc
-CDEFS =		${SSL_DEFS} ${SSL_INC}
-CFLAGS =	-O ${CDEFS}
-#CFLAGS =	-g ${CDEFS}
+CC =		cc
+CDEFS =		$(SSL_DEFS) $(SSL_INC)
+CFLAGS =	-O $(CDEFS) -ansi -pedantic -U__STRICT_ANSI__ -Wall -Wpointer-arith -Wshadow -Wcast-qual -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wno-long-long
 LDFLAGS =	-s
-#LDFLAGS =	-g
-LDLIBS =	${SSL_LIBS} ${SYSV_LIBS} ${CRYPT_LIB}
+LDLIBS =	$(CRYPT_LIB) $(SSL_LIBS) $(SYSV_LIBS)
 
 all:		mini_httpd htpasswd
 
 mini_httpd:	mini_httpd.o match.o tdate_parse.o
-	${CC} ${CFLAGS} ${LDFLAGS} mini_httpd.o match.o tdate_parse.o ${LDLIBS} -o mini_httpd
+	$(CC) $(LDFLAGS) mini_httpd.o match.o tdate_parse.o $(LDLIBS) -o mini_httpd
 
 mini_httpd.o:	mini_httpd.c version.h port.h match.h tdate_parse.h mime_encodings.h mime_types.h
-	${CC} ${CFLAGS} -c mini_httpd.c
+	$(CC) $(CFLAGS) -c mini_httpd.c
 
 match.o:	match.c match.h
-	${CC} ${CFLAGS} -c match.c
+	$(CC) $(CFLAGS) -c match.c
 
 tdate_parse.o:	tdate_parse.c tdate_parse.h
-	${CC} ${CFLAGS} -c tdate_parse.c
+	$(CC) $(CFLAGS) -c tdate_parse.c
 
 mime_encodings.h: mime_encodings.txt
 	rm -f mime_encodings.h
@@ -58,34 +56,34 @@ mime_types.h: mime_types.txt
 
 
 htpasswd:	htpasswd.o
-	${CC} ${CFLAGS} ${LDFLAGS} htpasswd.o ${CRYPT_LIB} -o htpasswd
+	$(CC) $(LDFLAGS) htpasswd.o $(CRYPT_LIB) -o htpasswd
 
 htpasswd.o:	htpasswd.c
-	${CC} ${CFLAGS} -c htpasswd.c
+	$(CC) $(CFLAGS) -c htpasswd.c
 
 
 cert:		mini_httpd.pem
 mini_httpd.pem:	mini_httpd.cnf
-	openssl req -new -x509 -days 365 -nodes -config mini_httpd.cnf -out mini_httpd.pem -keyout mini_httpd.pem
+	openssl req -new -x509 -days 3650 -nodes -config mini_httpd.cnf -out mini_httpd.pem -keyout mini_httpd.pem
 	openssl x509 -subject -dates -fingerprint -noout -in mini_httpd.pem
 	chmod 600 mini_httpd.pem
 
 
 install:	all
-	rm -f ${BINDIR}/mini_httpd ${BINDIR}/htpasswd
-	-mkdir -p ${BINDIR}
-	cp mini_httpd htpasswd ${BINDIR}
-	rm -f ${MANDIR}/man8/mini_httpd.8 ${MANDIR}/man1/htpasswd.1
-	-mkdir -p ${MANDIR}/man8
-	cp mini_httpd.8 ${MANDIR}/man8
-	-mkdir -p ${MANDIR}/man1
-	cp htpasswd.1 ${MANDIR}/man1
+	rm -f $(BINDIR)/mini_httpd $(BINDIR)/htpasswd
+	-mkdir -p $(BINDIR)
+	cp mini_httpd htpasswd $(BINDIR)
+	rm -f $(MANDIR)/man8/mini_httpd.8 $(MANDIR)/man1/htpasswd.1
+	-mkdir -p $(MANDIR)/man8
+	cp mini_httpd.8 $(MANDIR)/man8
+	-mkdir -p $(MANDIR)/man1
+	cp htpasswd.1 $(MANDIR)/man1
 
 clean:
 	rm -f mini_httpd mime_encodings.h mime_types.h htpasswd mini_httpd.rnd *.o core core.* *.core
 
 tar:
-	@name=`sed -n -e '/SERVER_SOFTWARE/!d' -e 's,.*mini_httpd/,mini_httpd-,' -e 's, .*,,p' version.h` ; \
+	@name=`sed -n -e '/#define SERVER_SOFTWARE /!d' -e 's,.*mini_httpd/,mini_httpd-,' -e 's, .*,,p' version.h` ; \
 	  rm -rf $$name ; \
 	  mkdir $$name ; \
 	  tar cf - `cat FILES` | ( cd $$name ; tar xfBp - ) ; \

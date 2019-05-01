@@ -4,6 +4,13 @@
 #
 # This goes in /usr/local/etc/rc.d and gets run at boot-time.
 
+. /etc/rc.conf
+
+case "${mini_httpd_enable}" in
+    [Yy][Ee][Ss]) ;;
+    *) exit ;;
+esac
+
 case "$1" in
  
     start)

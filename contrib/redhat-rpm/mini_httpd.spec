@@ -1,6 +1,6 @@
 Summary: small, simple http daemon, supports SSL
 Name: mini_httpd
-Version: 1.19
+Version: 1.20
 Release: 1
 Copyright: Freely Redistributable
 Packager: Bennett Todd <bet@mordor.net>
@@ -57,18 +57,19 @@ install contrib/redhat-rpm/mini_httpd.init \
 
 
 %changelog
-* Mon Oct 27 2003 <jef@acme.com> Version 1.19
-* Sat Sep 13 2003 <jef@acme.com> Version 1.18
-* Sat May 25 2002 <jef@acme.com> Version 1.17
-* Mon May 07 2001 <jef@acme.com> Version 1.16
-* Tue May 01 2001 <jef@acme.com> Version 1.15c
-* Sat Apr 21 2001 <jef@acme.com> Version 1.15b
-* Wed Sep 20 2000 <jef@acme.com> Version 1.15
-* Thu Jun 15 2000 <jef@acme.com> Version 1.14
-* Fri May 26 2000 <jef@acme.com> Version 1.13
-* Wed Mar 01 2000 <jef@acme.com> Version 1.12
-* Sun Feb 06 2000 <jef@acme.com> Version 1.11
-* Wed Feb 02 2000 <jef@acme.com> Version 1.10
+* Thu Jan 08 2004 <jef@mail.acme.com> Version 1.20
+* Mon Oct 27 2003 <jef@mail.acme.com> Version 1.19
+* Sat Sep 13 2003 <jef@mail.acme.com> Version 1.18
+* Sat May 25 2002 <jef@mail.acme.com> Version 1.17
+* Mon May 07 2001 <jef@mail.acme.com> Version 1.16
+* Tue May 01 2001 <jef@mail.acme.com> Version 1.15c
+* Sat Apr 21 2001 <jef@mail.acme.com> Version 1.15b
+* Wed Sep 20 2000 <jef@mail.acme.com> Version 1.15
+* Thu Jun 15 2000 <jef@mail.acme.com> Version 1.14
+* Fri May 26 2000 <jef@mail.acme.com> Version 1.13
+* Wed Mar 01 2000 <jef@mail.acme.com> Version 1.12
+* Sun Feb 06 2000 <jef@mail.acme.com> Version 1.11
+* Wed Feb 02 2000 <jef@mail.acme.com> Version 1.10
 * Mon Jan 31 2000 <bet@rahul.net> Version 1.09, added init script
 * Wed Jan 19 2000 <bet@rahul.net> Version 1.08, reset release to 1
 * Mon Dec 13 1999 <bet@mordor.net>
