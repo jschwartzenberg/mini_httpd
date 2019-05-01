@@ -557,6 +557,7 @@ main( int argc, char** argv )
 	SSL_CTX_set_options( ssl_ctx, SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3 );
 	if ( certfile[0] != '\0' )
 	    if ( SSL_CTX_use_certificate_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
+		 SSL_CTX_use_certificate_chain_file( ssl_ctx, certfile ) == 0 ||
 		 SSL_CTX_use_PrivateKey_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
 		 SSL_CTX_check_private_key( ssl_ctx ) == 0 )
 		{

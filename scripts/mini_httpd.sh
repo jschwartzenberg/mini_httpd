@@ -2,13 +2,16 @@
 #
 # mini_httpd.sh - startup script for mini_httpd on FreeBSD
 #
-# This goes in /usr/local/etc/rc.d and gets run at boot-time.
+# This should be manually installed as:
+#  /usr/local/etc/rc.d/mini_httpd
+# It gets run at boot-time.
 #
 # Variables available:
-#   mini_httpd_enable='YES/NO'
-#   mini_httpd_program='path'
-#   mini_httpd_pidfile='path'
-#   mini_httpd_devfs='path'
+#   mini_httpd_enable='YES'
+#   mini_httpd_program='/usr/local/sbin/mini_httpd'
+#   mini_httpd_pidfile='/var/run/mini_httpd.pid'
+#   mini_httpd_devfs=...
+#   mini_httpd_flags=...
 #
 # PROVIDE: mini_httpd
 # REQUIRE: LOGIN FILESYSTEMS
@@ -18,31 +21,21 @@
 
 name='mini_httpd'
 rcvar='mini_httpd_enable'
+start_precmd='mini_httpd_precmd'
+mini_httpd_enable_defval='NO'
 
 load_rc_config "$name"
-
-# Defaults.
-mini_httpd_enable="${mini_httpd_enable:-'NO'}"
-mini_httpd_program="${mini_httpd_program:-'/usr/local/sbin/mini_httpd'}"
-mini_httpd_pidfile="${mini_httpd_pidfile:-'/var/run/mini_httpd.pid'}"
+command="${mini_httpd_program:-/usr/local/sbin/${name}}"
+pidfile="${mini_httpd_pidfile:-/var/run/${name}.pid}"
+command_args="-i ${pidfile}"
 
 mini_httpd_precmd ()
-    {
-    if [ '' != "$mini_httpd_devfs" ] ; then
-	mount -t devfs devfs "$mini_httpd_devfs"
-	devfs -m "$mini_httpd_devfs" rule -s 1 applyset
-	devfs -m "$mini_httpd_devfs" rule -s 2 applyset
-    fi
-    }
-
-mini_httpd_stop ()
-    {
-    kill -USR1 `cat "$pidfile"`
-    }
-
-command="$mini_httpd_program"
-pidfile="$mini_httpd_pidfile"
-start_precmd='mini_httpd_precmd'
-stop_cmd='mini_httpd_stop'
+{
+	if [ -n "$mini_httpd_devfs" ] ; then
+		mount -t devfs devfs "$mini_httpd_devfs"
+		devfs -m "$mini_httpd_devfs" rule -s 1 applyset
+		devfs -m "$mini_httpd_devfs" rule -s 2 applyset
+	fi
+}
 
 run_rc_command "$1"

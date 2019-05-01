@@ -1,6 +1,6 @@
 Summary: small, simple http daemon, supports SSL
 Name: mini_httpd
-Version: 1.24
+Version: 1.25
 Release: 1
 Copyright: Freely Redistributable
 Packager: Bennett Todd <bet@mordor.net>
