@@ -244,7 +244,8 @@ static void read_config( char* filename );
 static void value_required( char* name, char* value );
 static void no_value_required( char* name, char* value );
 static int initialize_listen_socket( usockaddr* usaP );
-static void handle_request( void );
+static void handle_request( void ) __attribute__((noreturn));
+static void finish_request( int exitstatus ) __attribute__((noreturn));
 static void de_dotdot( char* f );
 static int get_pathinfo( void );
 static void do_file( void );
@@ -859,7 +860,6 @@ main( int argc, char** argv )
 	    if ( listen6_fd != -1 )
 		(void) close( listen6_fd );
 	    handle_request();
-	    exit( 0 );
 	    }
 	(void) close( conn_fd );
 	}
@@ -1198,7 +1198,7 @@ handle_request( void )
 	if ( SSL_accept( ssl ) == 0 )
 	    {
 	    ERR_print_errors_fp( stderr );
-	    exit( 1 );
+	    finish_request( 1 );
 	    }
 	}
 #endif /* USE_SSL */
@@ -1389,6 +1389,63 @@ handle_request( void )
 #ifdef USE_SSL
     SSL_free( ssl );
 #endif /* USE_SSL */
+
+    finish_request( 0 );
+    }
+
+
+static void
+finish_request( int exitstatus )
+    {
+#undef LINGER_SOCKOPT
+#define LINGER_READ
+
+#define LINGER_SECS 5
+
+#ifdef LINGER_SOCKOPT
+    /* The sockopt version of lingering close. Doesn't actually work. */
+    struct linger lin;
+
+    shutdown( conn_fd, SHUT_WR );
+    lin.l_onoff = 1;
+    lin.l_linger = LINGER_SECS;
+    (void) setsockopt(
+	conn_fd, SOL_SOCKET, SO_LINGER, (void*) &lin, sizeof(lin) );
+#endif /* LINGER_SOCKOPT */
+
+#ifdef LINGER_READ
+    /* The "non-blocking read until error/eof/timeout" version of
+    ** lingering close.
+    */
+    int flags;
+    fd_set rfds;
+    struct timeval tv;
+    int r;
+    char* buf[1024];
+	    
+    flags = fcntl( conn_fd, F_GETFL, 0 );
+    if ( flags != -1 )
+	{
+	flags |= (int) O_NDELAY;
+	(void) fcntl( conn_fd, F_SETFL, flags );
+	}
+    shutdown( conn_fd, SHUT_WR );
+    for (;;)
+	{
+	FD_ZERO( &rfds );
+	FD_SET( conn_fd, &rfds );
+	tv.tv_sec = LINGER_SECS;
+	tv.tv_usec = 0;
+	r = select( conn_fd + 1, &rfds, (fd_set*) 0, (fd_set*) 0, &tv );
+	if ( r <= 0 )	/* timeout or error */
+	    break;
+	r = read( conn_fd, (void*) buf, sizeof(buf) );
+	if ( r <= 0 )	/* eof or error */
+	    break;
+	}
+#endif /* LINGER_READ */
+
+    exit( exitstatus );
     }
 
 
@@ -1775,7 +1832,7 @@ do_cgi( void )
 	    /* Interposer process. */
 	    (void) close( p[0] );
 	    cgi_interpose_input( p[1] );
-	    exit( 0 );
+	    finish_request( 0 );
 	    }
 	(void) close( p[1] );
 	if ( p[0] != STDIN_FILENO )
@@ -1817,7 +1874,7 @@ do_cgi( void )
 	    /* Interposer process. */
 	    (void) close( p[1] );
 	    cgi_interpose_output( p[0], parse_headers );
-	    exit( 0 );
+	    finish_request( 0 );
 	    }
 	(void) close( p[0] );
 	if ( p[1] != STDOUT_FILENO )
@@ -1901,6 +1958,14 @@ cgi_interpose_input( int wfd )
     ssize_t r, r2;
     char buf[1024];
 
+    /* Set up the timeout for reading again, since we're in a sub-process. */
+#ifdef HAVE_SIGSET
+    (void) sigset( SIGALRM, handle_read_timeout );
+#else /* HAVE_SIGSET */
+    (void) signal( SIGALRM, handle_read_timeout );
+#endif /* HAVE_SIGSET */
+    (void) alarm( READ_TIMEOUT );
+
     c = request_len - request_idx;
     if ( c > 0 )
 	{
@@ -1930,6 +1995,7 @@ cgi_interpose_input( int wfd )
 	    break;
 	    }
 	c += r;
+	(void) alarm( READ_TIMEOUT );
 	}
     post_post_garbage_hack();
     }
@@ -1967,6 +2033,14 @@ cgi_interpose_output( int rfd, int parse_headers )
     {
     ssize_t r, r2;
     char buf[1024];
+
+    /* Set up the timeout for writing again, since we're in a sub-process. */
+#ifdef HAVE_SIGSET
+    (void) sigset( SIGALRM, handle_write_timeout );
+#else /* HAVE_SIGSET */
+    (void) signal( SIGALRM, handle_write_timeout );
+#endif /* HAVE_SIGSET */
+    (void) alarm( WRITE_TIMEOUT );
 
     if ( ! parse_headers )
 	{
@@ -2069,7 +2143,7 @@ cgi_interpose_output( int rfd, int parse_headers )
 	    continue;
 	    }
 	if ( r <= 0 )
-	    goto done;
+	    return;
 	for (;;)
 	    {
 	    r2 = my_write( buf, r );
@@ -2079,12 +2153,11 @@ cgi_interpose_output( int rfd, int parse_headers )
 		continue;
 		}
 	    if ( r2 != r )
-		goto done;
+		return;
 	    break;
 	    }
+	(void) alarm( WRITE_TIMEOUT );
 	}
-    done:
-    shutdown( conn_fd, SHUT_WR );
     }
 
 
@@ -2391,7 +2464,7 @@ send_error( int s, char* title, char* extra_header, char* text )
 #ifdef USE_SSL
     SSL_free( ssl );
 #endif /* USE_SSL */
-    exit( 1 );
+    finish_request( 1 );
     }
 
 
@@ -2704,6 +2777,7 @@ send_via_write( int fd, off_t size )
 		    return;
 		break;
 		}
+	    (void) alarm( WRITE_TIMEOUT );
 	    }
 	}
     }
@@ -3273,7 +3347,7 @@ static void
 handle_write_timeout( int sig )
     {
     syslog( LOG_INFO, "%.80s connection timed out writing", ntoa( &client_addr ) );
-    exit( 1 );
+    finish_request( 1 );
     }
 
 
