@@ -269,7 +269,7 @@ static int send_error_file( char* filename );
 static void send_error_tail( void );
 static void add_headers( int s, char* title, char* extra_header, char* me, char* mt, off_t b, time_t mod );
 static void start_request( void );
-static void add_to_request( char* str );
+static void add_to_request( char* str, size_t len );
 static char* get_request_line( void );
 static void start_response( void );
 static void add_to_response( char* str );
@@ -282,6 +282,7 @@ static ssize_t my_write( void* buf, size_t size );
 static int my_sendfile( int fd, int s, off_t offset, size_t nbytes );
 #endif /* HAVE_SENDFILE */
 static void add_str( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str );
+static void add_data( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len );
 static void make_log_entry( void );
 static void check_referrer( void );
 static int really_check_referrer( void );
@@ -553,7 +554,7 @@ main( int argc, char** argv )
 	SSL_load_error_strings();
 	SSLeay_add_ssl_algorithms();
 	ssl_ctx = SSL_CTX_new( SSLv23_server_method() );
-	SSL_CTX_set_options( ssl_ctx, SSL_OP_NO_SSLv3 );
+	SSL_CTX_set_options( ssl_ctx, SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3 );
 	if ( certfile[0] != '\0' )
 	    if ( SSL_CTX_use_certificate_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
 		 SSL_CTX_use_PrivateKey_file( ssl_ctx, certfile, SSL_FILETYPE_PEM ) == 0 ||
@@ -1212,8 +1213,7 @@ handle_request( void )
 	if ( rr <= 0 )
 	    break;
 	(void) alarm( READ_TIMEOUT );
-	buf[rr] = '\0';
-	add_to_request( buf );
+	add_to_request( buf, rr );
 	if ( strstr( request, "\015\012\015\012" ) != (char*) 0 ||
 	     strstr( request, "\012\012" ) != (char*) 0 )
 	    break;
@@ -2576,9 +2576,9 @@ start_request( void )
     }
 
 static void
-add_to_request( char* str )
+add_to_request( char* str, size_t len )
     {
-    add_str( &request, &request_size, &request_len, str );
+    add_data( &request, &request_size, &request_len, str, len );
     }
 
 static char*
@@ -2791,7 +2791,13 @@ add_str( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str )
 	len = 0;
     else
 	len = strlen( str );
+    add_data( bufP, bufsizeP, buflenP, str, len );
+    }
 
+
+static void
+add_data( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len )
+    {
     if ( *bufsizeP == 0 )
 	{
 	*bufsizeP = len + 500;
