@@ -1995,10 +1995,10 @@ cgi_interpose_output( int rfd, int parse_headers )
 
 	/* Slurp in all headers. */
 	headers_size = 0;
-	add_str( &headers, &headers_size, &headers_len, (char*) 0 );
+	add_data( &headers, &headers_size, &headers_len, (char*) 0, 0 );
 	for (;;)
 	    {
-	    r = read( rfd, buf, sizeof(buf) - 1 );
+	    r = read( rfd, buf, sizeof(buf) );
 	    if ( r < 0 && ( errno == EINTR || errno == EAGAIN ) )
 		{
 		sleep( 1 );
@@ -2009,15 +2009,14 @@ cgi_interpose_output( int rfd, int parse_headers )
 		br = &(headers[headers_len]);
 		break;
 		}
-	    buf[r] = '\0';
-	    add_str( &headers, &headers_size, &headers_len, buf );
+	    add_data( &headers, &headers_size, &headers_len, buf, r );
 	    if ( ( br = strstr( headers, "\015\012\015\012" ) ) != (char*) 0 ||
 		 ( br = strstr( headers, "\012\012" ) ) != (char*) 0 )
 		break;
 	    }
 
 	/* If there were no headers, bail. */
-	if ( headers[0] == '\0' )
+	if ( headers_len == 0 )
 	    return;
 
 	/* Figure out the status. */
@@ -2810,7 +2809,7 @@ add_data( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len 
 	*buflenP = 0;
 	*bufP = (char*) e_malloc( *bufsizeP );
 	}
-    else if ( *buflenP + len >= *bufsizeP )
+    else if ( *buflenP + len >= *bufsizeP )	/* allow for NUL */
 	{
 	*bufsizeP = *buflenP + len + 500;
 	*bufP = (char*) e_realloc( (void*) *bufP, *bufsizeP );
