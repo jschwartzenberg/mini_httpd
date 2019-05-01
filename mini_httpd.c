@@ -163,6 +163,9 @@ typedef long long int64_t;
 #define METHOD_GET 1
 #define METHOD_HEAD 2
 #define METHOD_POST 3
+#define METHOD_PUT 4
+#define METHOD_DELETE 5
+#define METHOD_TRACE 6
 
 
 /* A multi-family sockaddr. */
@@ -1309,6 +1312,12 @@ handle_request( void )
 	method = METHOD_HEAD;
     else if ( strcasecmp( method_str, get_method_str( METHOD_POST ) ) == 0 )
 	method = METHOD_POST;
+    else if ( strcasecmp( method_str, get_method_str( METHOD_PUT ) ) == 0 )
+	method = METHOD_PUT;
+    else if ( strcasecmp( method_str, get_method_str( METHOD_DELETE ) ) == 0 )
+	method = METHOD_DELETE;
+    else if ( strcasecmp( method_str, get_method_str( METHOD_TRACE ) ) == 0 )
+	method = METHOD_TRACE;
     else
 	send_error( 501, "Not Implemented", "", "That method is not implemented." );
 
@@ -1566,8 +1575,11 @@ do_file( void )
 	do_cgi();
 	return;
 	}
-    else if ( pathinfo != (char*) 0 )
+    if ( pathinfo != (char*) 0 )
 	send_error( 404, "Not Found", "", "File not found." );
+
+    if ( method != METHOD_GET && method != METHOD_HEAD )
+	send_error( 501, "Not Implemented", "", "That method is not implemented." );
 
     fd = open( file, O_RDONLY );
     if ( fd < 0 )
@@ -1782,9 +1794,6 @@ do_cgi( void )
     int parse_headers;
     char* binary;
     char* directory;
-
-    if ( method != METHOD_GET && method != METHOD_POST )
-	send_error( 501, "Not Implemented", "", "That method is not implemented for CGI." );
 
     /* If the socket happens to be using one of the stdin/stdout/stderr
     ** descriptors, move it to another descriptor so that the dup2 calls
@@ -3082,6 +3091,9 @@ get_method_str( int m )
 	case METHOD_GET: return "GET";
 	case METHOD_HEAD: return "HEAD";
 	case METHOD_POST: return "POST";
+	case METHOD_PUT: return "PUT";
+	case METHOD_DELETE: return "DELETE";
+	case METHOD_TRACE: return "TRACE";
 	default: return "UNKNOWN";
 	}
     }
