@@ -279,7 +279,7 @@ static void send_via_sendfile( int fd, int s, off_t size );
 static ssize_t my_read( char* buf, size_t size );
 static ssize_t my_write( void* buf, size_t size );
 #ifdef HAVE_SENDFILE
-static int my_sendfile( int fd, int s, off_t offset, size_t nbytes );
+static ssize_t my_sendfile( int fd, int s, off_t offset, size_t nbytes );
 #endif /* HAVE_SENDFILE */
 static void add_str( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str );
 static void add_data( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len );
@@ -2770,14 +2770,19 @@ my_write( void* buf, size_t size )
 
 
 #ifdef HAVE_SENDFILE
-static int
+static ssize_t
 my_sendfile( int fd, int s, off_t offset, size_t nbytes )
     {
 #ifdef HAVE_LINUX_SENDFILE
-	off_t lo = offset;
-	return sendfile( s, fd, &lo, nbytes );
+    off_t lo = offset;
+    return sendfile( s, fd, &lo, nbytes );
 #else /* HAVE_LINUX_SENDFILE */
-	return sendfile( fd, s, offset, nbytes, (struct sf_hdtr*) 0, (off_t*) 0, 0 );
+    int r;
+    r = sendfile( fd, s, offset, nbytes, (struct sf_hdtr*) 0, (off_t*) 0, 0 );
+    if ( r == 0 )
+	return nbytes;
+    else
+	return r;
 #endif /* HAVE_LINUX_SENDFILE */
     }
 #endif /* HAVE_SENDFILE */
