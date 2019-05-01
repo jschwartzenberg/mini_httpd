@@ -40,9 +40,9 @@
 #endif
 
 #ifdef USE_IPV6
-# define HAVE_NETINET6_IN6_H
 # define HAVE_SOCKADDR_IN6
 # define HAVE_SOCKADDR_STORAGE
 # define HAVE_GETADDRINFO
 # define HAVE_GETNAMEINFO
+# define HAVE_GAI_STRERROR
 #endif
