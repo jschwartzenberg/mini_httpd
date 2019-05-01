@@ -113,6 +113,8 @@ typedef long long int64_t;
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+/* Do overlapping strcpy safely, by using memmove. */
+#define ol_strcpy(dst,src) memmove(dst,src,strlen(src)+1)
 
 #ifndef ERR_DIR
 #define ERR_DIR "errors"
@@ -195,8 +197,8 @@ static char* p3p;
 static int max_age;
 static FILE* logfp;
 static int listen4_fd, listen6_fd;
-#ifdef USE_SSL
 static int do_ssl;
+#ifdef USE_SSL
 static char* certfile;
 static char* cipher;
 static SSL_CTX* ssl_ctx;
@@ -346,8 +348,8 @@ main( int argc, char** argv )
     logfile = (char*) 0;
     pidfile = (char*) 0;
     logfp = (FILE*) 0;
-#ifdef USE_SSL
     do_ssl = 0;
+#ifdef USE_SSL
     certfile = DEFAULT_CERTFILE;
     cipher = (char*) 0;
 #endif /* USE_SSL */
@@ -688,7 +690,7 @@ main( int argc, char** argv )
 	    {
 	    if ( strncmp( logfile, cwd, strlen( cwd ) ) == 0 )
 		{
-		(void) strcpy( logfile, &logfile[strlen( cwd ) - 1] );
+		(void) ol_strcpy( logfile, &logfile[strlen( cwd ) - 1] );
 		/* (We already guaranteed that cwd ends with a slash, so leaving
 		** that slash in logfile makes it an absolute pathname within
 		** the chroot tree.)
@@ -1173,14 +1175,17 @@ handle_request( void )
     useragent = "";
 
 #ifdef TCP_NOPUSH
-    /* Set the TCP_NOPUSH socket option, to try and avoid the 0.2 second
-    ** delay between sending the headers and sending the data.  A better
-    ** solution is writev() (as used in thttpd), or send the headers with
-    ** send(MSG_MORE) (only available in Linux so far).
-    */
-    r = 1;
-    (void) setsockopt(
-	conn_fd, IPPROTO_TCP, TCP_NOPUSH, (void*) &r, sizeof(r) );
+    if ( ! do_ssl )
+	{
+	/* Set the TCP_NOPUSH socket option, to try and avoid the 0.2 second
+	** delay between sending the headers and sending the data.  A better
+	** solution is writev() (as used in thttpd), or send the headers with
+	** send(MSG_MORE) (only available in Linux so far).
+	*/
+	r = 1;
+	(void) setsockopt(
+	    conn_fd, IPPROTO_TCP, TCP_NOPUSH, (void*) &r, sizeof(r) );
+	}
 #endif /* TCP_NOPUSH */
 
 #ifdef USE_SSL
@@ -1397,26 +1402,26 @@ de_dotdot( char* f )
 	{
 	for ( cp2 = cp + 2; *cp2 == '/'; ++cp2 )
 	    continue;
-	(void) strcpy( cp + 1, cp2 );
+	(void) ol_strcpy( cp + 1, cp2 );
 	}
 
     /* Remove leading ./ and any /./ sequences. */
     while ( strncmp( f, "./", 2 ) == 0 )
-	(void) strcpy( f, f + 2 );
+	(void) ol_strcpy( f, f + 2 );
     while ( ( cp = strstr( f, "/./") ) != (char*) 0 )
-	(void) strcpy( cp, cp + 2 );
+	(void) ol_strcpy( cp, cp + 2 );
 
     /* Alternate between removing leading ../ and removing xxx/../ */
     for (;;)
 	{
 	while ( strncmp( f, "../", 3 ) == 0 )
-	    (void) strcpy( f, f + 3 );
+	    (void) ol_strcpy( f, f + 3 );
 	cp = strstr( f, "/../" );
 	if ( cp == (char*) 0 )
 	    break;
 	for ( cp2 = cp - 1; cp2 >= f && *cp2 != '/'; --cp2 )
 	    continue;
-	(void) strcpy( cp2 + 1, cp + 4 );
+	(void) ol_strcpy( cp2 + 1, cp + 4 );
 	}
 
     /* Also elide any xxx/.. at the end. */
@@ -3405,7 +3410,7 @@ ntoa( usockaddr* usaP )
 	}
     else if ( IN6_IS_ADDR_V4MAPPED( &usaP->sa_in6.sin6_addr ) && strncmp( str, "::ffff:", 7 ) == 0 )
 	/* Elide IPv6ish prefix for IPv4 addresses. */
-	(void) strcpy( str, &str[7] );
+	(void) ol_strcpy( str, &str[7] );
 
     return str;
 

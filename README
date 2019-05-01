@@ -1,5 +1,5 @@
 	            mini_httpd - small HTTP server
-		      version 1.21 of 18oct2004
+		      version 1.22 of 19Oct2015
 
 mini_httpd is a small HTTP server.  Its performance is not great, but for
 low or medium traffic sites it's quite adequate. It implements all the

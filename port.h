@@ -12,7 +12,7 @@
 #elif defined(linux)
 # define OS_Linux
 # define ARCH "Linux"
-#elif defined(sun)
+#elif defined(sun) || defined(SunOS) || defined(Solaris) || defined(__sun__)
 # define OS_Solaris
 # define ARCH "Solaris"
 #elif defined(__osf__)
@@ -88,6 +88,8 @@
 # define HAVE_SIGSET
 # define HAVE_INT64T
 # define HAVE_RAND
+# define HAVE_SENDFILE
+# define HAVE_LINUX_SENDFILE
 #endif /* OS_Solaris */
 
 #ifdef OS_DigitalUnix
@@ -106,7 +108,7 @@
 # define HAVE_MEMORY_H
 # define HAVE_SIGSET
 # define HAVE_RAND
-#endif /* OS_Solaris */
+#endif /* OS_SysV */
 
 #ifdef HAVE_RAND
 # define srandom srand
