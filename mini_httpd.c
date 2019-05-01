@@ -1210,7 +1210,7 @@ handle_request( void )
     start_request();
     for (;;)
 	{
-	char buf[10000];
+	char buf[50000];
 	int rr = my_read( buf, sizeof(buf) - 1 );
 	if ( rr < 0 && ( errno == EINTR || errno == EAGAIN ) )
 	    continue;
@@ -1277,7 +1277,8 @@ handle_request( void )
 	    cp = &line[5];
 	    cp += strspn( cp, " \t" );
 	    host = cp;
-	    if ( strchr( host, '/' ) != (char*) 0 || host[0] == '.' )
+	    if ( host[0] == '\0' || host[0] == '.' ||
+		 strchr( host, '/' ) != (char*) 0 )
 		send_error( 400, "Bad Request", "", "Can't parse request." );
 	    }
 	else if ( strncasecmp( line, "If-Modified-Since:", 18 ) == 0 )
