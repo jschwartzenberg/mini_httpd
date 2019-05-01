@@ -1,6 +1,6 @@
 Summary: small, simple http daemon, supports SSL
 Name: mini_httpd
-Version: 1.14
+Version: 1.18
 Release: 1
 Copyright: Freely Redistributable
 Packager: Bennett Todd <bet@mordor.net>
@@ -57,6 +57,12 @@ install contrib/redhat-rpm/mini_httpd.init \
 
 
 %changelog
+* Sat Sep 13 2003 <jef@acme.com> Version 1.18
+* Sat May 25 2002 <jef@acme.com> Version 1.17
+* Mon May 07 2001 <jef@acme.com> Version 1.16
+* Tue May 01 2001 <jef@acme.com> Version 1.15c
+* Sat Apr 21 2001 <jef@acme.com> Version 1.15b
+* Wed Sep 20 2000 <jef@acme.com> Version 1.15
 * Thu Jun 15 2000 <jef@acme.com> Version 1.14
 * Fri May 26 2000 <jef@acme.com> Version 1.13
 * Wed Mar 01 2000 <jef@acme.com> Version 1.12
