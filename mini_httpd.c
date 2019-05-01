@@ -269,10 +269,10 @@ static int send_error_file( char* filename );
 static void send_error_tail( void );
 static void add_headers( int s, char* title, char* extra_header, char* me, char* mt, off_t b, time_t mod );
 static void start_request( void );
-static void add_to_request( char* str, size_t len );
+static void add_to_request( char* str );
 static char* get_request_line( void );
 static void start_response( void );
-static void add_to_response( char* str, size_t len );
+static void add_to_response( char* str );
 static void send_response( void );
 static void send_via_write( int fd, off_t size );
 static void send_via_sendfile( int fd, int s, off_t size );
@@ -281,7 +281,7 @@ static ssize_t my_write( void* buf, size_t size );
 #ifdef HAVE_SENDFILE
 static int my_sendfile( int fd, int s, off_t offset, size_t nbytes );
 #endif /* HAVE_SENDFILE */
-static void add_to_buf( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len );
+static void add_str( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str );
 static void make_log_entry( void );
 static void check_referrer( void );
 static int really_check_referrer( void );
@@ -1206,13 +1206,14 @@ handle_request( void )
     for (;;)
 	{
 	char buf[10000];
-	int rr = my_read( buf, sizeof(buf) );
+	int rr = my_read( buf, sizeof(buf) - 1 );
 	if ( rr < 0 && ( errno == EINTR || errno == EAGAIN ) )
 	    continue;
 	if ( rr <= 0 )
 	    break;
 	(void) alarm( READ_TIMEOUT );
-	add_to_request( buf, rr );
+	buf[rr] = '\0';
+	add_to_request( buf );
 	if ( strstr( request, "\015\012\015\012" ) != (char*) 0 ||
 	     strstr( request, "\012\012" ) != (char*) 0 )
 	    break;
@@ -1565,7 +1566,6 @@ static void
 do_dir( void )
     {
     char buf[10000];
-    size_t buflen;
     char* contents;
     size_t contents_size, contents_len;
 #ifdef HAVE_SCANDIR
@@ -1598,7 +1598,7 @@ do_dir( void )
 #endif /* HAVE_SCANDIR */
 
     contents_size = 0;
-    buflen = snprintf( buf, sizeof(buf), "\
+    (void) snprintf( buf, sizeof(buf), "\
 <!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n\
 \n\
 <html>\n\
@@ -1612,16 +1612,14 @@ do_dir( void )
     <h4>Index of %s</h4>\n\
     <pre>\n",
 	file, file );
-    add_to_buf( &contents, &contents_size, &contents_len, buf, buflen );
+    add_str( &contents, &contents_size, &contents_len, buf );
 
 #ifdef HAVE_SCANDIR
 
     for ( i = 0; i < n; ++i )
 	{
 	name_info = file_details( file, dl[i]->d_name );
-	add_to_buf(
-	    &contents, &contents_size, &contents_len, name_info,
-	    strlen( name_info ) );
+	add_str( &contents, &contents_size, &contents_len, name_info );
 	}
 
 #else /* HAVE_SCANDIR */
@@ -1636,16 +1634,17 @@ do_dir( void )
 	for (;;)
 	    {
 	    size_t r;
-	    r = fread( buf, 1, sizeof(buf), fp );
+	    r = fread( buf, 1, sizeof(buf) - 1, fp );
 	    if ( r == 0 )
 		break;
-	    add_to_buf( &contents, &contents_size, &contents_len, buf, r );
+	    buf[r] = '\0';
+	    add_str( &contents, &contents_size, &contents_len, buf );
 	    }
 	(void) pclose( fp );
 	}
 #endif /* HAVE_SCANDIR */
 
-    buflen = snprintf( buf, sizeof(buf), "\
+    (void) snprintf( buf, sizeof(buf), "\
     </pre>\n\
 \n\
     <hr>\n\
@@ -1656,11 +1655,14 @@ do_dir( void )
 \n\
 </html>\n",
 	SERVER_URL, SERVER_SOFTWARE );
-    add_to_buf( &contents, &contents_size, &contents_len, buf, buflen );
+    add_str( &contents, &contents_size, &contents_len, buf );
 
     add_headers( 200, "Ok", "", "", "text/html; charset=%s", contents_len, sb.st_mtime );
     if ( method != METHOD_HEAD )
-	add_to_response( contents, contents_len );
+	{
+	contents[contents_len] = '\0';
+	add_to_response( contents );
+	}
     send_response();
     }
 
@@ -1992,10 +1994,10 @@ cgi_interpose_output( int rfd, int parse_headers )
 
 	/* Slurp in all headers. */
 	headers_size = 0;
-	add_to_buf( &headers, &headers_size, &headers_len, (char*) 0, 0 );
+	add_str( &headers, &headers_size, &headers_len, (char*) 0 );
 	for (;;)
 	    {
-	    r = read( rfd, buf, sizeof(buf) );
+	    r = read( rfd, buf, sizeof(buf) - 1 );
 	    if ( r < 0 && ( errno == EINTR || errno == EAGAIN ) )
 		{
 		sleep( 1 );
@@ -2006,7 +2008,8 @@ cgi_interpose_output( int rfd, int parse_headers )
 		br = &(headers[headers_len]);
 		break;
 		}
-	    add_to_buf( &headers, &headers_size, &headers_len, buf, r );
+	    buf[r] = '\0';
+	    add_str( &headers, &headers_size, &headers_len, buf );
 	    if ( ( br = strstr( headers, "\015\012\015\012" ) ) != (char*) 0 ||
 		 ( br = strstr( headers, "\012\012" ) ) != (char*) 0 )
 		break;
@@ -2397,7 +2400,6 @@ send_error_body( int s, char* title, char* text )
     {
     char filename[1000];
     char buf[10000];
-    int buflen;
 
     if ( vhost && req_hostname != (char*) 0 )
 	{
@@ -2416,7 +2418,7 @@ send_error_body( int s, char* title, char* text )
 	return;
 
     /* Send built-in error page. */
-    buflen = snprintf(
+    (void) snprintf(
 	buf, sizeof(buf), "\
 <!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">\n\
 \n\
@@ -2431,9 +2433,9 @@ send_error_body( int s, char* title, char* text )
 \n\
     <h4>%d %s</h4>\n",
 	s, title, s, title );
-    add_to_response( buf, buflen );
-    buflen = snprintf( buf, sizeof(buf), "%s\n", text );
-    add_to_response( buf, buflen );
+    add_to_response( buf );
+    (void) snprintf( buf, sizeof(buf), "%s\n", text );
+    add_to_response( buf );
     }
 
 
@@ -2449,10 +2451,11 @@ send_error_file( char* filename )
 	return 0;
     for (;;)
 	{
-	r = fread( buf, 1, sizeof(buf), fp );
+	r = fread( buf, 1, sizeof(buf) - 1, fp );
 	if ( r == 0 )
 	    break;
-	add_to_response( buf, r );
+	buf[r] = '\0';
+	add_to_response( buf );
 	}
     (void) fclose( fp );
     return 1;
@@ -2463,23 +2466,22 @@ static void
 send_error_tail( void )
     {
     char buf[500];
-    int buflen;
 
     if ( match( "**MSIE**", useragent ) )
 	{
 	int n;
-	buflen = snprintf( buf, sizeof(buf), "<!--\n" );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "<!--\n" );
+	add_to_response( buf );
 	for ( n = 0; n < 6; ++n )
 	    {
-	    buflen = snprintf( buf, sizeof(buf), "Padding so that MSIE deigns to show this error instead of its own canned one.\n" );
-	    add_to_response( buf, buflen );
+	    (void) snprintf( buf, sizeof(buf), "Padding so that MSIE deigns to show this error instead of its own canned one.\n" );
+	    add_to_response( buf );
 	    }
-	buflen = snprintf( buf, sizeof(buf), "-->\n" );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "-->\n" );
+	add_to_response( buf );
 	}
 
-    buflen = snprintf( buf, sizeof(buf), "\
+    (void) snprintf( buf, sizeof(buf), "\
     <hr>\n\
 \n\
     <address><a href=\"%s\">%s</a></address>\n\
@@ -2488,7 +2490,7 @@ send_error_tail( void )
 \n\
 </html>\n",
 	SERVER_URL, SERVER_SOFTWARE );
-    add_to_response( buf, buflen );
+    add_to_response( buf );
     }
 
 
@@ -2498,7 +2500,6 @@ add_headers( int s, char* title, char* extra_header, char* me, char* mt, off_t b
     time_t now, expires;
     char timebuf[100];
     char buf[10000];
-    int buflen;
     int s100;
     const char* rfc1123_fmt = "%a, %d %b %Y %H:%M:%S GMT";
 
@@ -2506,64 +2507,64 @@ add_headers( int s, char* title, char* extra_header, char* me, char* mt, off_t b
     bytes = b;
     make_log_entry();
     start_response();
-    buflen = snprintf( buf, sizeof(buf), "%s %d %s\015\012", protocol, status, title );
-    add_to_response( buf, buflen );
-    buflen = snprintf( buf, sizeof(buf), "Server: %s\015\012", SERVER_SOFTWARE );
-    add_to_response( buf, buflen );
+    (void) snprintf( buf, sizeof(buf), "%s %d %s\015\012", protocol, status, title );
+    add_to_response( buf );
+    (void) snprintf( buf, sizeof(buf), "Server: %s\015\012", SERVER_SOFTWARE );
+    add_to_response( buf );
     now = time( (time_t*) 0 );
     (void) strftime( timebuf, sizeof(timebuf), rfc1123_fmt, gmtime( &now ) );
-    buflen = snprintf( buf, sizeof(buf), "Date: %s\015\012", timebuf );
-    add_to_response( buf, buflen );
+    (void) snprintf( buf, sizeof(buf), "Date: %s\015\012", timebuf );
+    add_to_response( buf );
     s100 = status / 100;
     if ( s100 != 2 && s100 != 3 )
 	{
-	buflen = snprintf( buf, sizeof(buf), "Cache-Control: no-cache,no-store\015\012" );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "Cache-Control: no-cache,no-store\015\012" );
+	add_to_response( buf );
 	}
     if ( extra_header != (char*) 0 && extra_header[0] != '\0' )
 	{
-	buflen = snprintf( buf, sizeof(buf), "%s\015\012", extra_header );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "%s\015\012", extra_header );
+	add_to_response( buf );
 	}
     if ( me != (char*) 0 && me[0] != '\0' )
 	{
-	buflen = snprintf( buf, sizeof(buf), "Content-Encoding: %s\015\012", me );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "Content-Encoding: %s\015\012", me );
+	add_to_response( buf );
 	}
     if ( mt != (char*) 0 && mt[0] != '\0' )
 	{
-	buflen = snprintf( buf, sizeof(buf), "Content-Type: %s\015\012", mt );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "Content-Type: %s\015\012", mt );
+	add_to_response( buf );
 	}
     if ( bytes >= 0 )
 	{
-	buflen = snprintf(
+	(void) snprintf(
 	    buf, sizeof(buf), "Content-Length: %lld\015\012", (long long) bytes );
-	add_to_response( buf, buflen );
+	add_to_response( buf );
 	}
     if ( p3p != (char*) 0 && p3p[0] != '\0' )
 	{
-	buflen = snprintf( buf, sizeof(buf), "P3P: %s\015\012", p3p );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "P3P: %s\015\012", p3p );
+	add_to_response( buf );
 	}
     if ( max_age >= 0 )
 	{
 	expires = now + max_age;
 	(void) strftime(
 	    timebuf, sizeof(timebuf), rfc1123_fmt, gmtime( &expires ) );
-	buflen = snprintf( buf, sizeof(buf),
+	(void) snprintf( buf, sizeof(buf),
 	    "Cache-Control: max-age=%d\015\012Expires: %s\015\012", max_age, timebuf );
-	add_to_response( buf, buflen );
+	add_to_response( buf );
 	}
     if ( mod != (time_t) -1 )
 	{
 	(void) strftime(
 	    timebuf, sizeof(timebuf), rfc1123_fmt, gmtime( &mod ) );
-	buflen = snprintf( buf, sizeof(buf), "Last-Modified: %s\015\012", timebuf );
-	add_to_response( buf, buflen );
+	(void) snprintf( buf, sizeof(buf), "Last-Modified: %s\015\012", timebuf );
+	add_to_response( buf );
 	}
-    buflen = snprintf( buf, sizeof(buf), "Connection: close\015\012\015\012" );
-    add_to_response( buf, buflen );
+    (void) snprintf( buf, sizeof(buf), "Connection: close\015\012\015\012" );
+    add_to_response( buf );
     }
 
 
@@ -2575,9 +2576,9 @@ start_request( void )
     }
 
 static void
-add_to_request( char* str, size_t len )
+add_to_request( char* str )
     {
-    add_to_buf( &request, &request_size, &request_len, str, len );
+    add_str( &request, &request_size, &request_len, str );
     }
 
 static char*
@@ -2616,9 +2617,9 @@ start_response( void )
     }
 
 static void
-add_to_response( char* str, size_t len )
+add_to_response( char* str )
     {
-    add_to_buf( &response, &response_size, &response_len, str, len );
+    add_str( &response, &response_size, &response_len, str );
     }
 
 static void
@@ -2782,8 +2783,15 @@ my_sendfile( int fd, int s, off_t offset, size_t nbytes )
 
 
 static void
-add_to_buf( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t len )
+add_str( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str )
     {
+    size_t len;
+
+    if ( str == (char*) 0 )
+	len = 0;
+    else
+	len = strlen( str );
+
     if ( *bufsizeP == 0 )
 	{
 	*bufsizeP = len + 500;
@@ -2795,8 +2803,13 @@ add_to_buf( char** bufP, size_t* bufsizeP, size_t* buflenP, char* str, size_t le
 	*bufsizeP = *buflenP + len + 500;
 	*bufP = (char*) e_realloc( (void*) *bufP, *bufsizeP );
 	}
-    (void) memmove( &((*bufP)[*buflenP]), str, len );
-    *buflenP += len;
+
+    if ( len > 0 )
+	{
+	(void) memmove( &((*bufP)[*buflenP]), str, len );
+	*buflenP += len;
+	}
+
     (*bufP)[*buflenP] = '\0';
     }
 
