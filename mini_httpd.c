@@ -1149,7 +1149,7 @@ handle_request( void )
     char* cp;
     int r, file_len, i;
     const char* index_names[] = {
-	"index.html", "index.htm", "index.xhtml", "index.xht", "Default.htm",
+	"index.html", "index.mini-httpd.html", "index.htm", "index.xhtml", "index.xht", "Default.htm",
 	"index.cgi" };
 
     /* Set up the timeout for reading. */
