@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <crypt.h>
 
 #define LF 10
 #define CR 13

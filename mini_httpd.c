@@ -52,6 +52,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <dirent.h>
+#include <crypt.h>
+#include <grp.h>
 
 #include "port.h"
 #include "match.h"
