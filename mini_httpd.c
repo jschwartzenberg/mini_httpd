@@ -100,7 +100,7 @@
 #define SIZE_T_MAX 2147483647L
 #endif
 
-#ifndef HAVE_INT64T
+#if !defined(_INT64_T_DECLARED) && !defined(HAVE_INT64T)
 typedef long long int64_t;
 #endif
 
