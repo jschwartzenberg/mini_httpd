@@ -19,22 +19,21 @@ CRYPT_LIB =    -lcrypt
 #SSL_INC =	-I$(SSL_TREE)/include
 #SSL_LIBS =	-L$(SSL_TREE)/lib -lssl -lcrypto
 
-
-BINDIR =	/usr/local/sbin
-MANDIR =	/usr/local/man
+BINDIR =$(DESTDIR)/usr/sbin
+MANDIR =$(DESTDIR)/usr/share/man
 CC =		cc
 CDEFS =		$(SSL_DEFS) $(SSL_INC)
-CFLAGS =	-O $(CDEFS) -ansi -pedantic -U__STRICT_ANSI__ -Wall -Wpointer-arith -Wshadow -Wcast-qual -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wno-long-long
-LDFLAGS =	-s
+CFLAGS+=-O $(CDEFS) -ansi -pedantic -U__STRICT_ANSI__ -Wall -Wpointer-arith -Wshadow -Wcast-qual -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wno-long-long
+LDFLAGS+= `dpkg-buildflags --get CPPFLAGS` `dpkg-buildflags --get CFLAGS` `dpkg-buildflags --get LDFLAGS` -DUSE_SSL
 LDLIBS =	$(CRYPT_LIB) $(SSL_LIBS) $(SYSV_LIBS)
 
 all:		mini_httpd htpasswd
 
 mini_httpd:	mini_httpd.o match.o tdate_parse.o
-	$(CC) $(LDFLAGS) mini_httpd.o match.o tdate_parse.o $(LDLIBS) -o mini_httpd
+	$(CC) $(LDFLAGS) mini_httpd.o match.o tdate_parse.o $(LDLIBS) -o mini_httpd -lssl -lcrypto
 
 mini_httpd.o:	mini_httpd.c version.h port.h match.h tdate_parse.h mime_encodings.h mime_types.h
-	$(CC) $(CFLAGS) -c mini_httpd.c
+	$(CC) $(LDFLAGS) -c mini_httpd.c
 
 match.o:	match.c match.h
 	$(CC) $(CFLAGS) -c match.c
@@ -76,8 +75,6 @@ install:	all
 	rm -f $(MANDIR)/man8/mini_httpd.8 $(MANDIR)/man1/htpasswd.1
 	-mkdir -p $(MANDIR)/man8
 	cp mini_httpd.8 $(MANDIR)/man8
-	-mkdir -p $(MANDIR)/man1
-	cp htpasswd.1 $(MANDIR)/man1
 
 clean:
 	rm -f mini_httpd mime_encodings.h mime_types.h htpasswd mini_httpd.rnd *.o core core.* *.core
