@@ -1,6 +1,6 @@
 /* port.h - portability defines */
 
-#if defined(__FreeBSD__)
+#if defined(__FreeBSD_Kernel__)
 # define OS_FreeBSD
 # define ARCH "FreeBSD"
 #elif defined(__OpenBSD__)
@@ -40,7 +40,7 @@
 # define HAVE_SRANDOMDEV
 # ifdef SO_ACCEPTFILTER
 #  define HAVE_ACCEPT_FILTERS
-#  if ( __FreeBSD_version >= 411000 )
+#  if ( __FreeBSD_kernel_version >= 411000 )
 #   define ACCEPT_FILTER_NAME "httpready"
 #  else
 #   define ACCEPT_FILTER_NAME "dataready"
