@@ -1150,7 +1150,7 @@ handle_request( void )
     int r, file_len, i;
     const char* index_names[] = {
 	"index.html", "index.mini-httpd.html", "index.htm", "index.xhtml", "index.xht", "Default.htm",
-	"index.cgi" };
+	"index.cgi", "index.php" };
 
     /* Set up the timeout for reading. */
 #ifdef HAVE_SIGSET
@@ -2240,6 +2240,7 @@ make_envp( void )
     int envn;
     char* cp;
     char buf[256];
+    char rp[MAXPATHLEN];
 
     envn = 0;
     envp[envn++] = build_env( "PATH=%s", CGI_PATH );
@@ -2260,6 +2261,7 @@ make_envp( void )
     envp[envn++] = build_env(
 	"REQUEST_METHOD=%s", get_method_str( method ) );
     envp[envn++] = build_env( "SCRIPT_NAME=%s", path );
+    envp[envn++] = build_env( "SCRIPT_FILENAME=%s", realpath(file, rp) );
     if ( pathinfo != (char*) 0 )
 	{
 	envp[envn++] = build_env( "PATH_INFO=/%s", pathinfo );
