@@ -2407,7 +2407,8 @@ auth_check( char* dirname )
 	    /* Yes. */
 	    (void) fclose( fp );
 	    /* So is the password right? */
-	    if ( strcmp( crypt( authpass, cryp ), cryp ) == 0 )
+	    char *cryptpass = crypt( authpass, cryp );
+	    if ((cryptpass != NULL) && (strcmp(cryptpass, cryp ) == 0) )
 		{
 		/* Ok! */
 		remoteuser = line;
